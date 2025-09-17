@@ -1,3 +1,48 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Excel Formula HTML Styling */
+.function {
+  color: #60a5fa; /* blue-400 */
+}
+
+.function-name {
+  color: #34d399; /* emerald-400 */
+  font-weight: bold;
+}
+
+.operator {
+  color: #fbbf24; /* amber-400 */
+  font-weight: bold;
+}
+
+.number {
+  color: #f59e0b; /* amber-500 */
+}
+
+.text {
+  color: #10b981; /* emerald-500 */
+}
+
+.range {
+  color: #8b5cf6; /* violet-500 */
+}
+
+.logical {
+  color: #ec4899; /* pink-500 */
+}
+
+.error {
+  color: #ef4444; /* red-500 */
+  font-weight: bold;
+}
+
+.subexpression {
+  color: #6b7280; /* gray-500 */
+}
+
+.equals {
+  color: #fbbf24; /* amber-400 */
+  font-weight: bold;
+}

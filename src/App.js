@@ -59,6 +59,11 @@ const App = () => {
       case 'python':
         newOutput = excelFormulaUtilitiesRef.current.formula2Python(formula);
         break;
+      case 'html':
+        newOutput = excelFormulaUtilitiesRef.current.formatFormulaHTML(formula, {
+          tmplIndentTab: ' '.repeat(numberOfSpaces),
+        });
+        break;
       default:
         newOutput = 'Invalid mode selected';
     }
@@ -618,6 +623,44 @@ const App = () => {
             root.formula2CSharp = root.formula2JavaScript; // Alias for simplicity
             root.formula2Python = root.formula2JavaScript; // Alias for simplicity
 
+            /**
+             * Exposes the getTokens function for external use.
+             * @param {string} formula The formula to tokenize.
+             * @returns {F_tokens} A collection of tokens.
+             */
+            root.getTokens = getTokens;
+
+            /**
+             * Formats a formula string with HTML tags for better display.
+             * @param {string} formula The formula to format.
+             * @param {object} options Formatting options.
+             * @returns {string} The formatted formula with HTML tags.
+             */
+            root.formatFormulaHTML = function (formula, options) {
+                const defaultOptions = {
+                    tmplFunctionStart: '<span class="function">{{autoindent}}<span class="function-name">{{token}}</span>(\n',
+                    tmplFunctionStop: '\n{{autoindent}})</span>',
+                    tmplOperandError: '<span class="error">{{token}}</span>',
+                    tmplOperandRange: '{{autoindent}}<span class="range">{{token}}</span>',
+                    tmplLogical: '<span class="logical">{{token}}</span>{{autolinebreak}}',
+                    tmplOperandLogical: '{{autoindent}}<span class="logical">{{token}}</span>',
+                    tmplOperandNumber: '{{autoindent}}<span class="number">{{token}}</span>',
+                    tmplOperandText: '{{autoindent}}<span class="text">"{{token}}"</span>',
+                    tmplArgument: ',\n',
+                    tmplOperandOperatorInfix: ' <span class="operator">{{token}}</span>{{autolinebreak}} ',
+                    tmplSubexpressionStart: '{{autoindent}}<span class="subexpression">(\n',
+                    tmplSubexpressionStop: '\n{{autoindent}})</span>',
+                    tmplIndentTab: '    ',
+                    tmplIndentSpace: ' ',
+                    newLine: '\n',
+                    customTokenRender: null,
+                    prefix: '<span class="equals">=</span>',
+                    postfix: ""
+                };
+                options = root.core.extend({}, defaultOptions, options);
+                return root.formatFormula(formula, options);
+            };
+
             // Store the fully constructed library in the ref
             excelFormulaUtilitiesRef.current = root;
              // Trigger the first update
@@ -704,6 +747,7 @@ const App = () => {
                 >
                     <option value="beautify">Beautify</option>
                     <option value="minify">Minify</option>
+                    <option value="html">To HTML</option>
                     <option value="js">To JavaScript</option>
                     <option value="csharp">To C#</option>
                     <option value="python">To Python</option>
@@ -711,7 +755,7 @@ const App = () => {
             </div>
 
              {/* Formatting Options (Conditional) */}
-             {mode === 'beautify' && (
+             {(mode === 'beautify' || mode === 'html') && (
                 <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
                      <h3 className="text-lg font-semibold mb-3 text-gray-300">Formatting Options</h3>
                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -762,7 +806,11 @@ const App = () => {
                  </button>
             </div>
             <pre className="w-full flex-grow bg-gray-900 border border-gray-700 rounded-md p-3 text-gray-200 font-mono overflow-auto min-h-[200px] lg:min-h-0">
-                <code>{output}</code>
+                {mode === 'html' ? (
+                    <code dangerouslySetInnerHTML={{ __html: output }} />
+                ) : (
+                    <code>{output}</code>
+                )}
             </pre>
           </div>
         </div>
