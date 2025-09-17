@@ -3,12 +3,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 // Main component for the Excel Formula Beautifier application
 const App = () => {
   // --- State Variables ---
-  const [formula, setFormula] = useState('=IF(SUM(A1:B2)>10, "High", "Low")'); // Input formula string
+  const [formula, setFormula] = useState('=IF([Status]@row="Complete", [Amount]@row*1.1, [Amount]@row)'); // Input formula string
   const [mode, setMode] = useState('beautify'); // Current operation mode (beautify, minify, etc.)
   const [output, setOutput] = useState(''); // Result of the formula processing
   const [isEu, setIsEu] = useState(false); // Flag for European-style separators (;)
   const [numberOfSpaces, setNumberOfSpaces] = useState(4); // Indentation spaces for beautify mode
   const [copySuccess, setCopySuccess] = useState(''); // Feedback message for copy action
+  const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "name": "A1", "let_name": "Status"}, {"field": "Amount", "name": "B1", "let_name": "Amount"}]'); // Location mappings for Smartsheet conversion
 
   // --- Refs ---
   // A ref to hold the excelFormulaUtilities library logic.
@@ -64,11 +65,20 @@ const App = () => {
           tmplIndentTab: ' '.repeat(numberOfSpaces),
         });
         break;
+      case 'smartsheet':
+        try {
+          // Parse location mappings from JSON string
+          const mappings = locationMappings ? JSON.parse(locationMappings) : [];
+          newOutput = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
+        } catch (error) {
+          newOutput = `Error parsing location mappings: ${error.message}`;
+        }
+        break;
       default:
         newOutput = 'Invalid mode selected';
     }
     setOutput(newOutput);
-  }, [formula, mode, isEu, numberOfSpaces]);
+  }, [formula, mode, isEu, numberOfSpaces, locationMappings]);
 
   // --- Effects ---
 
@@ -576,7 +586,7 @@ const App = () => {
                     } else if (token.subtype === TOK_SUBTYPE_STOP) {
                         indentCount = Math.max(0, indentCount - 1);
                     }
-                    
+
                     // Update isNewLine flag
                     isNewLine = outputFormula.endsWith(options.newLine);
                 }
@@ -647,6 +657,61 @@ const App = () => {
              * @returns {F_tokens} A collection of tokens.
              */
             root.getTokens = getTokens;
+
+            /**
+             * Convert a Smartsheet formula to Google Sheets formula by
+             * 1. Replace all @row column references with a standardized name
+             * 2. Replace true/false with TRUE/FALSE for use in Google sheet formula
+             * 3. Wrap converted formula in LET() function
+             * @param {string} formula - The Smartsheet formula to convert
+             * @param {Array} locationMappings - A list of headers mappings
+             * @returns {string} The converted formula
+             */
+            root.convertSmartsheetFormula = function(formula, locationMappings) {
+                // Remove leading = sign if found
+                let convertedFormula = formula.replace(/^[=']+/g, "");
+                
+                // Extract unique @ row headers used in formula
+                let rowHeadersMatches = convertedFormula.match(/(\[.+?\]@row)|(\w+@row)/g) || [];
+                if (rowHeadersMatches.length === 0) {
+                    return "No @row column references found";
+                }
+                rowHeadersMatches = Array.from(new Set(rowHeadersMatches));
+                
+                // Map extracted row headers to column names
+                const headerMappings = {};
+                rowHeadersMatches.forEach(header => {
+                    let fieldMatch = header.match(/\[(.+)\]/);
+                    if (!fieldMatch) fieldMatch = header.match(/(.+)@row/);
+                    if (!fieldMatch) throw new Error(`Unable to extract field from header [${header}]`);
+                    const field = fieldMatch[1];
+                    const mappedHeader = locationMappings.find(mapping => {
+                        return mapping.field === field;
+                    });
+                    if (mappedHeader) {
+                        headerMappings[header] = mappedHeader;
+                    }
+                });
+                
+                // Create string of LET name and location references
+                const letNameString = Object.values(headerMappings).reduce((currStr, mappingObj) => { 
+                    return currStr + mappingObj.let_name; 
+                }, "");
+                
+                // Replace all unique @ row headers with LET name
+                Object.keys(headerMappings).forEach(mapping => {
+                    const replacementName = headerMappings[mapping].name;
+                    convertedFormula = convertedFormula.replaceAll(mapping, replacementName);
+                });
+                
+                // Replace true with TRUE and false with FALSE
+                convertedFormula = convertedFormula.replaceAll(/\btrue\b/g, "TRUE").replaceAll(/\bfalse\b/g, "FALSE");
+                
+                // Wrap function in LET formula with field name references
+                convertedFormula = `LET(${letNameString}\n${convertedFormula}\n)`;
+                
+                return convertedFormula;
+            };
 
             /**
              * Formats a formula string with HTML tags for better display.
@@ -769,6 +834,7 @@ const App = () => {
                     <option value="js">To JavaScript</option>
                     <option value="csharp">To C#</option>
                     <option value="python">To Python</option>
+                    <option value="smartsheet">Smartsheet to Google Sheets</option>
                 </select>
             </div>
 
@@ -797,6 +863,35 @@ const App = () => {
                                 className="w-20 p-2 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500"
                                 min="0"
                             />
+                         </div>
+                     </div>
+                </div>
+             )}
+
+             {/* Smartsheet Options (Conditional) */}
+             {mode === 'smartsheet' && (
+                <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
+                     <h3 className="text-lg font-semibold mb-3 text-gray-300">Location Mappings</h3>
+                     <div className="flex flex-col gap-4">
+                         <div>
+                            <label htmlFor="locationMappings" className="block text-sm font-medium mb-2 text-gray-300">
+                                Location Mappings (JSON):
+                            </label>
+                            <textarea
+                                id="locationMappings"
+                                value={locationMappings}
+                                onChange={(e) => setLocationMappings(e.target.value)}
+                                className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
+                                placeholder='[{"field": "Name", "name": "A1", "let_name": "Name"}, {"field": "Age", "name": "B1", "let_name": "Age"}]'
+                            />
+                         </div>
+                         <div className="text-sm text-gray-400">
+                            <p>Enter location mappings as JSON array. Each mapping should have:</p>
+                            <ul className="list-disc list-inside mt-1 space-y-1">
+                                <li><code>field</code>: The Smartsheet column name</li>
+                                <li><code>name</code>: The Google Sheets cell reference</li>
+                                <li><code>let_name</code>: The LET variable name</li>
+                            </ul>
                          </div>
                      </div>
                 </div>
