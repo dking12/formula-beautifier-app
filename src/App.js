@@ -79,7 +79,7 @@ const App = () => {
             mappings = locationMappings ? JSON.parse(locationMappings) : [];
           }
           let convertedFormula = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
-          
+
           // Apply beautify/minify to the result
           if (smartsheetFormat === 'beautify') {
             newOutput = excelFormulaUtilitiesRef.current.formatFormula(convertedFormula, {
@@ -870,6 +870,7 @@ const App = () => {
                 options = root.core.extend({}, defaultOptions, options);
                 return root.formatFormula(formula, options);
             };
+
 
             // Store the fully constructed library in the ref
             excelFormulaUtilitiesRef.current = root;
