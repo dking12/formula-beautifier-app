@@ -11,11 +11,13 @@ const App = () => {
   const [copySuccess, setCopySuccess] = useState(''); // Feedback message for copy action
   const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'); // Location mappings for Smartsheet conversion
   const [mappingFormat, setMappingFormat] = useState('json'); // Format for location mappings (json or csv)
+  const [smartsheetFormat, setSmartsheetFormat] = useState('beautify'); // Format for Smartsheet conversion result (beautify, minify)
 
   // --- Refs ---
   // A ref to hold the excelFormulaUtilities library logic.
   // Using a ref avoids re-initializing the library on every render.
   const excelFormulaUtilitiesRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // --- Core Logic ---
 
@@ -76,7 +78,31 @@ const App = () => {
             // Parse location mappings from JSON string
             mappings = locationMappings ? JSON.parse(locationMappings) : [];
           }
-          newOutput = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
+          let convertedFormula = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
+          
+          // Apply beautify/minify to the result
+          if (smartsheetFormat === 'beautify') {
+            newOutput = excelFormulaUtilitiesRef.current.formatFormula(convertedFormula, {
+              tmplIndentTab: ' '.repeat(numberOfSpaces),
+              prefix: "",
+            });
+          } else if (smartsheetFormat === 'minify') {
+            newOutput = excelFormulaUtilitiesRef.current.formatFormula(convertedFormula, {
+              tmplFunctionStart: '{{token}}(',
+              tmplFunctionStop: ')',
+              tmplOperandText: '"{{token}}"',
+              tmplArgument: ',',
+              tmplOperandOperatorInfix: '{{token}}',
+              tmplSubexpressionStart: '(',
+              tmplSubexpressionStop: ')',
+              tmplIndentTab: '',
+              tmplIndentSpace: '',
+              newLine: '',
+              prefix: '',
+            });
+          } else {
+            newOutput = convertedFormula;
+          }
         } catch (error) {
           newOutput = `Error parsing location mappings: ${error.message}`;
         }
@@ -85,7 +111,7 @@ const App = () => {
         newOutput = 'Invalid mode selected';
     }
     setOutput(newOutput);
-  }, [formula, mode, isEu, numberOfSpaces, locationMappings, mappingFormat]);
+  }, [formula, mode, isEu, numberOfSpaces, locationMappings, mappingFormat, smartsheetFormat]);
 
   // --- Effects ---
 
@@ -672,22 +698,22 @@ const App = () => {
              */
             root.convertCsvToMappings = function(csvString) {
                 if (!csvString.trim()) return [];
-                
+
                 const lines = csvString.trim().split('\n');
                 if (lines.length < 2) {
                     throw new Error('CSV must have at least a header row and one data row');
                 }
-                
+
                 // Parse CSV line with proper quote handling
                 function parseCsvLine(line) {
                     const result = [];
                     let current = '';
                     let inQuotes = false;
                     let i = 0;
-                    
+
                     while (i < line.length) {
                         const char = line[i];
-                        
+
                         if (char === '"') {
                             if (inQuotes && line[i + 1] === '"') {
                                 // Escaped quote
@@ -708,23 +734,23 @@ const App = () => {
                             i++;
                         }
                     }
-                    
+
                     // Add the last field
                     result.push(current.trim());
                     return result;
                 }
-                
+
                 // Parse header row
                 const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
                 const requiredHeaders = ['field', 'location', 'name'];
-                
+
                 // Check for required headers
                 for (const required of requiredHeaders) {
                     if (!headers.includes(required)) {
                         throw new Error(`CSV must contain '${required}' column`);
                     }
                 }
-                
+
                 // Parse data rows
                 const mappings = [];
                 for (let i = 1; i < lines.length; i++) {
@@ -732,7 +758,7 @@ const App = () => {
                     if (values.length !== headers.length) {
                         throw new Error(`Row ${i + 1} has ${values.length} columns, expected ${headers.length}`);
                     }
-                    
+
                     const mapping = {};
                     headers.forEach((header, index) => {
                         // Remove surrounding quotes if present
@@ -742,15 +768,15 @@ const App = () => {
                         }
                         mapping[header] = value;
                     });
-                    
+
                     // Calculate let_name if not provided
                     if (!mapping.let_name) {
                         mapping.let_name = `${mapping.name},${mapping.location},`;
                     }
-                    
+
                     mappings.push(mapping);
                 }
-                
+
                 return mappings;
             };
 
@@ -865,6 +891,21 @@ const App = () => {
 
   // --- Event Handlers ---
 
+  const handleFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvContent = e.target.result;
+        setLocationMappings(csvContent);
+        setMappingFormat('csv');
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please select a valid CSV file.');
+    }
+  };
+
   const handleCopyToClipboard = () => {
     if (output) {
       navigator.clipboard.writeText(output).then(() => {
@@ -940,7 +981,7 @@ const App = () => {
             </div>
 
              {/* Formatting Options (Conditional) */}
-             {(mode === 'beautify' || mode === 'html') && (
+             {(mode === 'beautify' || mode === 'html' || (mode === 'smartsheet' && smartsheetFormat === 'beautify')) && (
                 <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
                      <h3 className="text-lg font-semibold mb-3 text-gray-300">Formatting Options</h3>
                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -974,19 +1015,58 @@ const App = () => {
                 <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
                      <h3 className="text-lg font-semibold mb-3 text-gray-300">Location Mappings</h3>
                      <div className="flex flex-col gap-4">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="mappingFormat" className="block text-sm font-medium mb-2 text-gray-300">
+                                    Input Format:
+                                </label>
+                                <select
+                                    id="mappingFormat"
+                                    value={mappingFormat}
+                                    onChange={(e) => setMappingFormat(e.target.value)}
+                                    className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                                >
+                                    <option value="json">JSON</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="smartsheetFormat" className="block text-sm font-medium mb-2 text-gray-300">
+                                    Output Format:
+                                </label>
+                                <select
+                                    id="smartsheetFormat"
+                                    value={smartsheetFormat}
+                                    onChange={(e) => setSmartsheetFormat(e.target.value)}
+                                    className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                                >
+                                    <option value="beautify">Beautify</option>
+                                    <option value="minify">Minify</option>
+                                    <option value="raw">Raw</option>
+                                </select>
+                            </div>
+                         </div>
                          <div>
-                            <label htmlFor="mappingFormat" className="block text-sm font-medium mb-2 text-gray-300">
-                                Input Format:
+                            <label htmlFor="csvFile" className="block text-sm font-medium mb-2 text-gray-300">
+                                Import CSV File:
                             </label>
-                            <select
-                                id="mappingFormat"
-                                value={mappingFormat}
-                                onChange={(e) => setMappingFormat(e.target.value)}
-                                className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
-                            >
-                                <option value="json">JSON</option>
-                                <option value="csv">CSV</option>
-                            </select>
+                            <div className="flex gap-2">
+                                <input
+                                    type="file"
+                                    id="csvFile"
+                                    ref={fileInputRef}
+                                    onChange={handleFileImport}
+                                    accept=".csv"
+                                    className="hidden"
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-200"
+                                >
+                                    Choose CSV File
+                                </button>
+                                <span className="text-sm text-gray-400 self-center">Select a CSV file to import mappings</span>
+                            </div>
                          </div>
                          <div>
                             <label htmlFor="locationMappings" className="block text-sm font-medium mb-2 text-gray-300">
@@ -997,7 +1077,7 @@ const App = () => {
                                 value={locationMappings}
                                 onChange={(e) => setLocationMappings(e.target.value)}
                                 className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
-                                placeholder={mappingFormat === 'json' 
+                                placeholder={mappingFormat === 'json'
                                     ? '[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
                                     : 'field,location,name,let_name\n"2025 Review Type","AL2","c2025_review_type","c2025_review_type,AL2,"\n"2nd Request Sent","BL2","c2nd_request_sent","c2nd_request_sent,BL2,"'
                                 }
