@@ -570,7 +570,13 @@ const App = () => {
                     } else if (token.subtype === TOK_SUBTYPE_STOP) {
                         indentCount = Math.max(0, indentCount - 1);
                     }
-                    isNewLine = outputFormula.endsWith(options.newLine);
+                    
+                    // Update isNewLine flag - function stops always start a new line
+                    if (token.subtype === TOK_SUBTYPE_STOP) {
+                        isNewLine = true;
+                    } else {
+                        isNewLine = outputFormula.endsWith(options.newLine);
+                    }
                 }
 
                 return options.prefix + trim(outputFormula) + options.postfix;
