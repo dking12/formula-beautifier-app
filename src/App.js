@@ -554,7 +554,13 @@ const App = () => {
                         currentIndentCount = Math.max(0, indentCount - 1);
                     }
 
-                    const indent = isNewLine ? options.tmplIndentTab.repeat(currentIndentCount) : "";
+                    // Determine if this token will start a new line
+                    let willStartNewLine = isNewLine;
+                    if (token.subtype === TOK_SUBTYPE_STOP) {
+                        willStartNewLine = true; // Function stops always start a new line
+                    }
+
+                    const indent = willStartNewLine ? options.tmplIndentTab.repeat(currentIndentCount) : "";
                     const nextToken = tokens.next();
                     let lineBreak = "";
                     if (nextToken) {
@@ -571,12 +577,8 @@ const App = () => {
                         indentCount = Math.max(0, indentCount - 1);
                     }
                     
-                    // Update isNewLine flag - function stops always start a new line
-                    if (token.subtype === TOK_SUBTYPE_STOP) {
-                        isNewLine = true;
-                    } else {
-                        isNewLine = outputFormula.endsWith(options.newLine);
-                    }
+                    // Update isNewLine flag
+                    isNewLine = outputFormula.endsWith(options.newLine);
                 }
 
                 return options.prefix + trim(outputFormula) + options.postfix;
