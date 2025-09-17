@@ -678,8 +678,44 @@ const App = () => {
                     throw new Error('CSV must have at least a header row and one data row');
                 }
                 
+                // Parse CSV line with proper quote handling
+                function parseCsvLine(line) {
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    let i = 0;
+                    
+                    while (i < line.length) {
+                        const char = line[i];
+                        
+                        if (char === '"') {
+                            if (inQuotes && line[i + 1] === '"') {
+                                // Escaped quote
+                                current += '"';
+                                i += 2;
+                            } else {
+                                // Toggle quote state
+                                inQuotes = !inQuotes;
+                                i++;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            // End of field
+                            result.push(current.trim());
+                            current = '';
+                            i++;
+                        } else {
+                            current += char;
+                            i++;
+                        }
+                    }
+                    
+                    // Add the last field
+                    result.push(current.trim());
+                    return result;
+                }
+                
                 // Parse header row
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
                 const requiredHeaders = ['field', 'location', 'name'];
                 
                 // Check for required headers
@@ -692,14 +728,19 @@ const App = () => {
                 // Parse data rows
                 const mappings = [];
                 for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
+                    const values = parseCsvLine(lines[i]);
                     if (values.length !== headers.length) {
                         throw new Error(`Row ${i + 1} has ${values.length} columns, expected ${headers.length}`);
                     }
                     
                     const mapping = {};
                     headers.forEach((header, index) => {
-                        mapping[header] = values[index];
+                        // Remove surrounding quotes if present
+                        let value = values[index];
+                        if (value.startsWith('"') && value.endsWith('"')) {
+                            value = value.slice(1, -1);
+                        }
+                        mapping[header] = value;
                     });
                     
                     // Calculate let_name if not provided
@@ -958,7 +999,7 @@ const App = () => {
                                 className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
                                 placeholder={mappingFormat === 'json' 
                                     ? '[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
-                                    : 'field,location,name,let_name\nStatus,A2,status,status,A2,\nAmount,B2,amount,amount,B2,'
+                                    : 'field,location,name,let_name\n"2025 Review Type","AL2","c2025_review_type","c2025_review_type,AL2,"\n"2nd Request Sent","BL2","c2nd_request_sent","c2nd_request_sent,BL2,"'
                                 }
                             />
                          </div>
@@ -982,6 +1023,7 @@ const App = () => {
                                         <li><code>name</code>: The LET variable name</li>
                                         <li><code>let_name</code>: The comma-separated LET variable name and location (optional, will be calculated if not provided)</li>
                                     </ul>
+                                    <p className="mt-2 text-xs">Note: Values containing commas should be wrapped in double quotes. Use double quotes to escape quotes within values.</p>
                                 </>
                             )}
                          </div>
