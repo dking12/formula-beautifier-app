@@ -539,12 +539,9 @@ const App = () => {
                         return ", ";
                     }
                      if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
-                         const funcToken = tokenStack.token();
-                         if (funcToken && funcToken.value.toUpperCase() === 'IF') {
-                            // This part is tricky. A simple IF(A,B,C) becomes A ? B : C
-                            // This simple converter won't handle that properly without more state.
-                            // We will ignore for this simplified version.
-                         }
+                         // This part is tricky. A simple IF(A,B,C) becomes A ? B : C
+                         // This simple converter won't handle that properly without more state.
+                         // We will ignore for this simplified version.
                          return ")";
                     }
 
