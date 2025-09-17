@@ -10,6 +10,7 @@ const App = () => {
   const [numberOfSpaces, setNumberOfSpaces] = useState(4); // Indentation spaces for beautify mode
   const [copySuccess, setCopySuccess] = useState(''); // Feedback message for copy action
   const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'); // Location mappings for Smartsheet conversion
+  const [mappingFormat, setMappingFormat] = useState('json'); // Format for location mappings (json or csv)
 
   // --- Refs ---
   // A ref to hold the excelFormulaUtilities library logic.
@@ -67,8 +68,14 @@ const App = () => {
         break;
       case 'smartsheet':
         try {
-          // Parse location mappings from JSON string
-          const mappings = locationMappings ? JSON.parse(locationMappings) : [];
+          let mappings = [];
+          if (mappingFormat === 'csv') {
+            // Convert CSV to JSON
+            mappings = excelFormulaUtilitiesRef.current.convertCsvToMappings(locationMappings);
+          } else {
+            // Parse location mappings from JSON string
+            mappings = locationMappings ? JSON.parse(locationMappings) : [];
+          }
           newOutput = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
         } catch (error) {
           newOutput = `Error parsing location mappings: ${error.message}`;
@@ -78,7 +85,7 @@ const App = () => {
         newOutput = 'Invalid mode selected';
     }
     setOutput(newOutput);
-  }, [formula, mode, isEu, numberOfSpaces, locationMappings]);
+  }, [formula, mode, isEu, numberOfSpaces, locationMappings, mappingFormat]);
 
   // --- Effects ---
 
@@ -581,7 +588,7 @@ const App = () => {
 
                     outputFormula += applyTokenTemplate(token, options, indent, lineBreak, options.customTokenRender, tokens.previous());
 
-                    if (token.subtype === TOK_SUBTYPE_START) {
+                     if (token.subtype === TOK_SUBTYPE_START) {
                         indentCount++;
                     } else if (token.subtype === TOK_SUBTYPE_STOP) {
                         indentCount = Math.max(0, indentCount - 1);
@@ -609,7 +616,7 @@ const App = () => {
                     let outStr = directConversionMap[tokenStr.toUpperCase()] || tokenStr;
 
                     // Handle specific token types
-                    if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
+                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
                         if (tokenStr.toUpperCase() === 'IF') {
                             return { tokenString: "", useTemplate: true };
                         }
@@ -618,7 +625,7 @@ const App = () => {
                     if (token.type === TOK_TYPE_ARGUMENT) {
                         return { tokenString: ", ", useTemplate: false };
                     }
-                    if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
+                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
                         return { tokenString: ")", useTemplate: false };
                     }
                     if (token.type === TOK_TYPE_OPERAND && token.subtype === TOK_SUBTYPE_TEXT) {
@@ -659,6 +666,54 @@ const App = () => {
             root.getTokens = getTokens;
 
             /**
+             * Convert CSV string to location mappings array
+             * @param {string} csvString - CSV string with headers: field,location,name,let_name
+             * @returns {Array} Array of mapping objects
+             */
+            root.convertCsvToMappings = function(csvString) {
+                if (!csvString.trim()) return [];
+                
+                const lines = csvString.trim().split('\n');
+                if (lines.length < 2) {
+                    throw new Error('CSV must have at least a header row and one data row');
+                }
+                
+                // Parse header row
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const requiredHeaders = ['field', 'location', 'name'];
+                
+                // Check for required headers
+                for (const required of requiredHeaders) {
+                    if (!headers.includes(required)) {
+                        throw new Error(`CSV must contain '${required}' column`);
+                    }
+                }
+                
+                // Parse data rows
+                const mappings = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(',').map(v => v.trim());
+                    if (values.length !== headers.length) {
+                        throw new Error(`Row ${i + 1} has ${values.length} columns, expected ${headers.length}`);
+                    }
+                    
+                    const mapping = {};
+                    headers.forEach((header, index) => {
+                        mapping[header] = values[index];
+                    });
+                    
+                    // Calculate let_name if not provided
+                    if (!mapping.let_name) {
+                        mapping.let_name = `${mapping.name},${mapping.location},`;
+                    }
+                    
+                    mappings.push(mapping);
+                }
+                
+                return mappings;
+            };
+
+            /**
              * Convert a Smartsheet formula to Google Sheets formula by
              * 1. Replace all @row column references with a standardized name
              * 2. Replace true/false with TRUE/FALSE for use in Google sheet formula
@@ -670,14 +725,14 @@ const App = () => {
             root.convertSmartsheetFormula = function(formula, locationMappings) {
                 // Remove leading = sign if found
                 let convertedFormula = formula.replace(/^[=']+/g, "");
-                
+
                 // Extract unique @ row headers used in formula
                 let rowHeadersMatches = convertedFormula.match(/(\[.+?\]@row)|(\w+@row)/g) || [];
                 if (rowHeadersMatches.length === 0) {
                     return "No @row column references found";
                 }
                 rowHeadersMatches = Array.from(new Set(rowHeadersMatches));
-                
+
                 // Map extracted row headers to column names
                 const headerMappings = {};
                 rowHeadersMatches.forEach(header => {
@@ -692,9 +747,9 @@ const App = () => {
                         headerMappings[header] = mappedHeader;
                     }
                 });
-                
+
                 // Create string of LET name and location references
-                const letNameString = Object.values(headerMappings).reduce((currStr, mappingObj) => { 
+                const letNameString = Object.values(headerMappings).reduce((currStr, mappingObj) => {
                     // Use let_name if provided, otherwise calculate from name and location
                     if (mappingObj.let_name) {
                         return currStr + mappingObj.let_name;
@@ -702,19 +757,19 @@ const App = () => {
                         return currStr + mappingObj.name + "," + mappingObj.location + ",";
                     }
                 }, "");
-                
+
                 // Replace all unique @ row headers with LET name
                 Object.keys(headerMappings).forEach(mapping => {
                     const replacementName = headerMappings[mapping].name;
                     convertedFormula = convertedFormula.replaceAll(mapping, replacementName);
                 });
-                
+
                 // Replace true with TRUE and false with FALSE
                 convertedFormula = convertedFormula.replaceAll(/\btrue\b/g, "TRUE").replaceAll(/\bfalse\b/g, "FALSE");
-                
+
                 // Wrap function in LET formula with field name references
                 convertedFormula = `LET(${letNameString}\n${convertedFormula}\n)`;
-                
+
                 return convertedFormula;
             };
 
@@ -879,25 +934,56 @@ const App = () => {
                      <h3 className="text-lg font-semibold mb-3 text-gray-300">Location Mappings</h3>
                      <div className="flex flex-col gap-4">
                          <div>
+                            <label htmlFor="mappingFormat" className="block text-sm font-medium mb-2 text-gray-300">
+                                Input Format:
+                            </label>
+                            <select
+                                id="mappingFormat"
+                                value={mappingFormat}
+                                onChange={(e) => setMappingFormat(e.target.value)}
+                                className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200"
+                            >
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                            </select>
+                         </div>
+                         <div>
                             <label htmlFor="locationMappings" className="block text-sm font-medium mb-2 text-gray-300">
-                                Location Mappings (JSON):
+                                Location Mappings ({mappingFormat.toUpperCase()}):
                             </label>
                             <textarea
                                 id="locationMappings"
                                 value={locationMappings}
                                 onChange={(e) => setLocationMappings(e.target.value)}
                                 className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
-                                placeholder='[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
+                                placeholder={mappingFormat === 'json' 
+                                    ? '[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
+                                    : 'field,location,name,let_name\nStatus,A2,status,status,A2,\nAmount,B2,amount,amount,B2,'
+                                }
                             />
                          </div>
                          <div className="text-sm text-gray-400">
-                            <p>Enter location mappings as JSON array. Each mapping should have:</p>
-                            <ul className="list-disc list-inside mt-1 space-y-1">
-                                <li><code>field</code>: The Smartsheet column name. Example: Status</li>
-                                <li><code>location</code>: The Google Sheets cell reference. Example: A2</li>
-                                <li><code>name</code>: The LET variable name. Example: Status becomes status</li>
-                                <li><code>let_name</code>: The comma-separated LET variable name and location. End with a final comma. This field is optional and can be calculated using the location and name values. Example: status,A2,</li>
-                            </ul>
+                            {mappingFormat === 'json' ? (
+                                <>
+                                    <p>Enter location mappings as JSON array. Each mapping should have:</p>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                        <li><code>field</code>: The Smartsheet column name. Example: Status</li>
+                                        <li><code>location</code>: The Google Sheets cell reference. Example: A2</li>
+                                        <li><code>name</code>: The LET variable name. Example: Status becomes status</li>
+                                        <li><code>let_name</code>: The comma-separated LET variable name and location. End with a final comma. This field is optional and can be calculated using the location and name values. Example: status,A2,</li>
+                                    </ul>
+                                </>
+                            ) : (
+                                <>
+                                    <p>Enter location mappings as CSV. Required columns:</p>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                        <li><code>field</code>: The Smartsheet column name</li>
+                                        <li><code>location</code>: The Google Sheets cell reference</li>
+                                        <li><code>name</code>: The LET variable name</li>
+                                        <li><code>let_name</code>: The comma-separated LET variable name and location (optional, will be calculated if not provided)</li>
+                                    </ul>
+                                </>
+                            )}
                          </div>
                      </div>
                 </div>
@@ -928,7 +1014,7 @@ const App = () => {
                 {mode === 'html' ? (
                     <code dangerouslySetInnerHTML={{ __html: output }} />
                 ) : (
-                    <code>{output}</code>
+                <code>{output}</code>
                 )}
             </pre>
           </div>
