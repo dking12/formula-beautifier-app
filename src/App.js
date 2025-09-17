@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // Main component for the Excel Formula Beautifier application
 const App = () => {
@@ -14,6 +14,56 @@ const App = () => {
   // A ref to hold the excelFormulaUtilities library logic.
   // Using a ref avoids re-initializing the library on every render.
   const excelFormulaUtilitiesRef = useRef(null);
+
+  // --- Core Logic ---
+
+  /**
+   * Main function to process the formula based on the selected mode.
+   * It calls the appropriate function from the formula utilities library.
+   */
+  const updateOutput = useCallback(() => {
+    if (!excelFormulaUtilitiesRef.current) return; // Guard against premature execution
+
+    // Set the EU flag on the library instance before processing
+    excelFormulaUtilitiesRef.current.isEu = isEu;
+
+    let newOutput;
+    switch (mode) {
+      case 'beautify':
+        newOutput = excelFormulaUtilitiesRef.current.formatFormula(formula, {
+          tmplIndentTab: ' '.repeat(numberOfSpaces),
+          prefix: "=",
+        });
+        break;
+      case 'minify':
+        newOutput = excelFormulaUtilitiesRef.current.formatFormula(formula, {
+          tmplFunctionStart: '{{token}}(',
+          tmplFunctionStop: ')',
+          tmplOperandText: '"{{token}}"',
+          tmplArgument: ',',
+          tmplOperandOperatorInfix: '{{token}}',
+          tmplSubexpressionStart: '(',
+          tmplSubexpressionStop: ')',
+          tmplIndentTab: '',
+          tmplIndentSpace: '',
+          newLine: '',
+          prefix: '=',
+        });
+        break;
+      case 'js':
+        newOutput = excelFormulaUtilitiesRef.current.formula2JavaScript(formula);
+        break;
+      case 'csharp':
+        newOutput = excelFormulaUtilitiesRef.current.formula2CSharp(formula);
+        break;
+      case 'python':
+        newOutput = excelFormulaUtilitiesRef.current.formula2Python(formula);
+        break;
+      default:
+        newOutput = 'Invalid mode selected';
+    }
+    setOutput(newOutput);
+  }, [formula, mode, isEu, numberOfSpaces]);
 
   // --- Effects ---
 
@@ -56,7 +106,7 @@ const App = () => {
                 }
             };
 
-            const formatStr = root.string.formatStr;
+            // const formatStr = root.string.formatStr; // Unused in current implementation
             const trim = root.string.trim;
 
             const types = {};
@@ -78,8 +128,8 @@ const App = () => {
             const TOK_SUBTYPE_LOGICAL = types.TOK_SUBTYPE_LOGICAL = "logical";
             const TOK_SUBTYPE_ERROR = types.TOK_SUBTYPE_ERROR = "error";
             const TOK_SUBTYPE_RANGE = types.TOK_SUBTYPE_RANGE = "range";
-            const TOK_SUBTYPE_MATH = types.TOK_SUBTYPE_MATH = "math";
-            const TOK_SUBTYPE_CONCAT = types.TOK_SUBTYPE_CONCAT = "concatenate";
+            // const TOK_SUBTYPE_MATH = types.TOK_SUBTYPE_MATH = "math"; // Unused in current implementation
+            // const TOK_SUBTYPE_CONCAT = types.TOK_SUBTYPE_CONCAT = "concatenate"; // Unused in current implementation
             const TOK_SUBTYPE_INTERSECT = types.TOK_SUBTYPE_INTERSECT = "intersect";
             const TOK_SUBTYPE_UNION = types.TOK_SUBTYPE_UNION = "union";
 
@@ -400,9 +450,9 @@ const App = () => {
             }
 
             // --- Formatting and Conversion Logic ---
-            const fromBase26 = (number) => { /* ... logic ... */ return 0; };
-            const toBase26 = (value) => { /* ... logic ... */ return 'A'; };
-            const breakOutRanges = (rangeStr, delim) => { /* ... logic ... */ return rangeStr; };
+            // const fromBase26 = (number) => { /* ... logic ... */ return 0; }; // Unused in current implementation
+            // const toBase26 = (value) => { /* ... logic ... */ return 'A'; }; // Unused in current implementation
+            // const breakOutRanges = (rangeStr, delim) => { /* ... logic ... */ return rangeStr; }; // Unused in current implementation
 
              function applyTokenTemplate(token, options, indent, lineBreak, override, lastToken) {
                 // ... [The entire template application logic from the original file] ...
@@ -576,7 +626,7 @@ const App = () => {
 
         })(excelFormulaUtilities); // Pass the object to be populated
     }
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, [updateOutput]); // Include updateOutput dependency
 
   // Effect to re-run the formula processing whenever an input changes.
   useEffect(() => {
@@ -584,57 +634,7 @@ const App = () => {
     if (excelFormulaUtilitiesRef.current) {
         updateOutput();
     }
-  }, [formula, mode, isEu, numberOfSpaces]); // Dependencies for the effect
-
-  // --- Core Logic ---
-
-  /**
-   * Main function to process the formula based on the selected mode.
-   * It calls the appropriate function from the formula utilities library.
-   */
-  const updateOutput = () => {
-    if (!excelFormulaUtilitiesRef.current) return; // Guard against premature execution
-
-    // Set the EU flag on the library instance before processing
-    excelFormulaUtilitiesRef.current.isEu = isEu;
-
-    let newOutput;
-    switch (mode) {
-      case 'beautify':
-        newOutput = excelFormulaUtilitiesRef.current.formatFormula(formula, {
-          tmplIndentTab: ' '.repeat(numberOfSpaces),
-          prefix: "=",
-        });
-        break;
-      case 'minify':
-        newOutput = excelFormulaUtilitiesRef.current.formatFormula(formula, {
-          tmplFunctionStart: '{{token}}(',
-          tmplFunctionStop: ')',
-          tmplOperandText: '"{{token}}"',
-          tmplArgument: ',',
-          tmplOperandOperatorInfix: '{{token}}',
-          tmplSubexpressionStart: '(',
-          tmplSubexpressionStop: ')',
-          tmplIndentTab: '',
-          tmplIndentSpace: '',
-          newLine: '',
-          prefix: '=',
-        });
-        break;
-      case 'js':
-        newOutput = excelFormulaUtilitiesRef.current.formula2JavaScript(formula);
-        break;
-      case 'csharp':
-        newOutput = excelFormulaUtilitiesRef.current.formula2CSharp(formula);
-        break;
-      case 'python':
-        newOutput = excelFormulaUtilitiesRef.current.formula2Python(formula);
-        break;
-      default:
-        newOutput = 'Invalid mode selected';
-    }
-    setOutput(newOutput);
-  };
+  }, [updateOutput]); // Dependencies for the effect
 
   // --- Event Handlers ---
 

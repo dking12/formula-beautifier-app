@@ -1,0 +1,70 @@
+---
+description: When a commit is requested
+globs: 
+alwaysApply: false
+---
+# Commit and Push Workflow
+
+## Automated Commit Process
+
+When the user requests to commit changes, follow this exact workflow:
+
+### 1. Check Status (Optional)
+```bash
+git status
+```
+- Verify all intended files are ready to be staged
+- Note the number of files that will be changed
+
+### 2. Create One-Line Commit Message
+- Use conventional commit format: `type: brief description`
+- Keep it concise and descriptive
+- Focus on the main functionality added/changed
+- Examples:
+  - `feat: add user authentication system`
+  - `fix: resolve API endpoint 401 errors`
+  - `refactor: extract reusable component logic`
+
+### 3. Add, Commit, and Push in One Command
+```bash
+gacp "type: brief description"
+```
+
+This single command will:
+- Stage all changes (`git add .`)
+- Commit with the provided message (`git commit -m`)
+- Push to remote (`git push`)
+
+## Commit Message Guidelines
+
+### Types to Use:
+- `feat:` - New features or functionality
+- `fix:` - Bug fixes and error resolutions
+- `refactor:` - Code restructuring without changing functionality
+- `docs:` - Documentation updates
+- `style:` - Code formatting and style changes
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks, dependencies, etc.
+
+### Message Structure:
+- Start with type and colon
+- Use present tense ("add" not "added")
+- Be specific but concise
+- Focus on the "what" and "why" not the "how"
+
+## Example Workflow
+
+**User Request:** "commit the recent changes"
+
+**Response:**
+1. Check status (optional): `git status`
+2. Add, commit, and push with one-liner: `gacp "feat: add dynamic short offer to link account page"`
+
+## Important Notes
+
+- Always stage ALL changes unless specifically instructed otherwise
+- Always use a one-line commit message
+- The `gacp` alias automatically handles add, commit, and push in sequence
+- Follow conventional commit format
+- Keep messages descriptive but concise
+- Use appropriate commit type based on the changes made

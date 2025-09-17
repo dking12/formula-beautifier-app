@@ -1,0 +1,267 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Pair Programming and Software Development Principles
+
+## Core Behavior Guidelines
+
+### Pair Programming Approach
+- **No code changes without explicit approval**: Never make code changes unless explicitly requested and approved by the user
+- **Neutral communication**: Maintain neutral tone throughout interactions - no positive encouragement, praise, or bias. Avoid phrases like "great idea", "excellent", "perfect", "good choice", etc. Focus on factual, objective responses
+- **Collaborative problem-solving**: Focus on discussing solutions, exploring options, and providing technical guidance
+- **Documentation of decisions**: Always document workarounds, ambiguous decisions, and architectural choices in code comments
+- **Cleanup after refactoring**: After any code refactoring, identify and remove unused files, functions, and dependencies. For greenfield applications, prioritize clean codebase over backward compatibility
+
+## Software Development Principles
+
+### DRY (Don't Repeat Yourself)
+**Principle**: Eliminate code duplication by extracting common functionality into reusable components, functions, or utilities.
+
+**Good Example**:
+```typescript
+// Reusable utility function
+const formatCurrency = (amount: number, currency: string = 'USD'): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency
+  }).format(amount);
+};
+
+// Used across multiple components
+const ProductPrice = ({ price }: { price: number }) => (
+  <span>{formatCurrency(price)}</span>
+);
+
+const CartTotal = ({ total }: { total: number }) => (
+  <div>Total: {formatCurrency(total)}</div>
+);
+```
+
+**Bad Example**:
+```typescript
+// Duplicated formatting logic
+const ProductPrice = ({ price }: { price: number }) => (
+  <span>{new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(price)}</span>
+);
+
+const CartTotal = ({ total }: { total: number }) => (
+  <div>Total: {new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(total)}</div>
+);
+```
+
+### KISS (Keep It Simple, Stupid)
+**Principle**: Prefer simple, straightforward solutions over complex ones. Complexity should only be added when absolutely necessary.
+
+**Good Example**:
+```typescript
+// Simple, readable function
+const isUserEligible = (user: User): boolean => {
+  return user.age >= 18 && user.hasValidLicense;
+};
+```
+
+**Bad Example**:
+```typescript
+// Overly complex with unnecessary abstractions
+const isUserEligible = (user: User): boolean => {
+  const eligibilityCriteria = {
+    age: { minimum: 18, operator: 'gte' },
+    license: { required: true, status: 'valid' }
+  };
+  
+  return Object.entries(eligibilityCriteria).every(([criterion, requirements]) => {
+    switch (criterion) {
+      case 'age':
+        return user.age >= requirements.minimum;
+      case 'license':
+        return user.hasValidLicense === requirements.required;
+      default:
+        return false;
+    }
+  });
+};
+```
+
+### SOLID Principles
+
+#### Single Responsibility Principle (SRP)
+**Good Example**:
+```typescript
+// Each class has a single responsibility
+class UserValidator {
+  validate(user: User): ValidationResult {
+    // Only handles validation logic
+  }
+}
+
+class UserRepository {
+  save(user: User): Promise<void> {
+    // Only handles data persistence
+  }
+}
+
+class UserService {
+  constructor(
+    private validator: UserValidator,
+    private repository: UserRepository
+  ) {}
+  
+  createUser(user: User): Promise<void> {
+    // Orchestrates validation and persistence
+  }
+}
+```
+
+**Bad Example**:
+```typescript
+// Class doing too many things
+class UserManager {
+  validate(user: User): ValidationResult {
+    // Validation logic
+  }
+  
+  save(user: User): Promise<void> {
+    // Database operations
+  }
+  
+  sendEmail(user: User): Promise<void> {
+    // Email functionality
+  }
+  
+  generateReport(): Report {
+    // Reporting logic
+  }
+}
+```
+
+#### Open/Closed Principle (OCP)
+**Good Example**:
+```typescript
+// Open for extension, closed for modification
+interface PaymentProcessor {
+  process(amount: number): Promise<void>;
+}
+
+class CreditCardProcessor implements PaymentProcessor {
+  process(amount: number): Promise<void> {
+    // Credit card specific logic
+  }
+}
+
+class PayPalProcessor implements PaymentProcessor {
+  process(amount: number): Promise<void> {
+    // PayPal specific logic
+  }
+}
+
+class PaymentService {
+  constructor(private processor: PaymentProcessor) {}
+  
+  makePayment(amount: number): Promise<void> {
+    return this.processor.process(amount);
+  }
+}
+```
+
+### YAGNI (You Aren't Gonna Need It)
+**Principle**: Don't implement features or abstractions until they are actually needed.
+
+**Good Example**:
+```typescript
+// Simple implementation that meets current needs
+const getUserById = async (id: string): Promise<User | null> => {
+  return await db.users.findUnique({ where: { id } });
+};
+```
+
+**Bad Example**:
+```typescript
+// Premature abstraction and features
+interface UserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findByPhone(phone: string): Promise<User | null>;
+  findBySocialId(provider: string, socialId: string): Promise<User | null>;
+  findWithPagination(page: number, limit: number): Promise<User[]>;
+  findWithFilters(filters: UserFilters): Promise<User[]>;
+  // ... many more methods that aren't needed yet
+}
+
+class DatabaseUserRepository implements UserRepository {
+  // Implementation of all methods, even unused ones
+}
+```
+
+## Code Quality Checklist
+
+Before providing any code suggestions or making changes, verify:
+
+### 1. **Approval Check**
+- [ ] Has the user explicitly requested this code change?
+- [ ] Is this a discussion/exploration rather than implementation?
+
+### 2. **DRY Compliance**
+- [ ] Is there existing code that could be reused?
+- [ ] Are there patterns that could be extracted into utilities?
+- [ ] Is the solution avoiding unnecessary duplication?
+
+### 3. **KISS Assessment**
+- [ ] Is this the simplest solution that meets the requirements?
+- [ ] Are there unnecessary abstractions or complexity?
+- [ ] Is the code easy to read and understand?
+
+### 4. **SOLID Principles Review**
+- [ ] **SRP**: Does each class/function have a single responsibility?
+- [ ] **OCP**: Is the code open for extension but closed for modification?
+- [ ] **LSP**: Are derived classes substitutable for their base classes?
+- [ ] **ISP**: Are interfaces specific to client needs?
+- [ ] **DIP**: Does the code depend on abstractions, not concretions?
+
+### 5. **YAGNI Validation**
+- [ ] Are we implementing features that aren't currently needed?
+- [ ] Are there premature optimizations or abstractions?
+- [ ] Does the solution focus on current requirements only?
+
+### 6. **Documentation Requirements**
+- [ ] Are workarounds or ambiguous decisions documented?
+- [ ] Are architectural decisions explained in comments?
+- [ ] Is the reasoning behind complex logic documented?
+
+### 7. **Code Review Standards**
+- [ ] Is the code maintainable and readable?
+- [ ] Are there clear naming conventions?
+- [ ] Is error handling appropriate?
+- [ ] Are there appropriate type definitions (for TypeScript)?
+
+### 8. **Cleanup Verification**
+- [ ] Are there unused files that can be removed?
+- [ ] Are there unused functions or imports?
+- [ ] Are there unused dependencies in package.json?
+- [ ] Are there deprecated endpoints that should be removed?
+- [ ] Is the codebase free of dead code and commented-out sections?
+
+## Project-Specific Guidelines
+
+### File Structure
+- Follow the existing structure in [src/](mdc:src/) for new components
+- Use the established patterns in [src/app/](mdc:src/app/) for API routes
+- Maintain consistency with existing [components/](mdc:src/app/components/) organization
+
+### Technology Stack
+- Next.js with TypeScript as seen in [next.config.ts](mdc:next.config.ts)
+- SCSS modules for styling as used throughout the project
+- Jest for testing as configured in [jest.config.ts](mdc:jest.config.ts)
+
+### Context Usage
+- Leverage existing contexts in [context/](mdc:src/context/) for state management
+- Follow the patterns established in [IntakeFormContext.tsx](mdc:src/context/IntakeFormContext.tsx)
+
+Remember: Always discuss before implementing, maintain neutrality, and prioritize code quality over cleverness.

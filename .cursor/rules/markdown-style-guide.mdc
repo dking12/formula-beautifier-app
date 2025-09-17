@@ -1,0 +1,119 @@
+---
+description: A style guide for all Markdown files, based on common markdownlint rules, to ensure consistency and readability.
+globs: ["**/*.md", "**/*.mdx"]
+alwaysApply: true
+---
+# Markdown Style Guide (Based on markdownlint)
+
+All Markdown files (`.md`, `.mdx`) must strictly adhere to the following style guide. These rules are based on the `markdownlint` standard to ensure consistency, readability, and maintainability across the project.
+
+---
+
+## 📜 General Rules
+
+- **File Ending**: Every file must end with a single trailing newline.
+- **Line Length**: Keep all lines to a maximum of **120 characters**. This rule does not apply to code blocks or tables where it would be impractical.
+- **No Inline HTML**: Avoid using raw HTML for elements that can be represented with Markdown. For example, use `# Heading` instead of `<h1>Heading</h1>`.
+
+---
+
+## #️⃣ Headings
+
+- **Single H1 Title**: Each document must start with one, and only one, H1 heading (`# Title`).
+- **Incremental Levels**: Heading levels must increase by one at a time. Do not skip levels (e.g., a `##` must be followed by a `###`, not a `####`).
+
+**Good Example**:
+
+```markdown
+# Document Title
+
+## Section 1
+
+### Subsection 1.1
+```
+
+**Bad Example**:
+
+```markdown
+# Document Title
+
+### Subsection without a Section (Skipped H2)
+```
+
+---
+
+## 📝 Lists
+
+- **Unordered Lists**: Always use a dash (`-`) for unordered list items.
+- **Ordered Lists**: Always use sequential numbers followed by a period (`1.`, `2.`, `3.`) for ordered lists.
+
+**Good Example**:
+
+```markdown
+- First item
+- Second item
+
+1. Step one
+2. Step two
+```
+
+**Bad Example**:
+
+```markdown
+* First item (uses asterisk)
+* Second item
+
+1) Step one (uses parenthesis)
+1. Step two (not sequential)
+```
+
+---
+
+## ```` Code Blocks
+
+- **Fenced Code Blocks**: All code blocks must be enclosed in triple backticks (\`\`\`).
+- **Language Specifier**: Always include a language specifier immediately after the opening backticks (e.g., \`\`\`typescript, \`\`\`json).
+
+**Good Example**:
+
+````markdown
+```typescript
+const message: string = "Hello, world!";
+console.log(message);
+```
+````
+
+**Bad Example**:
+
+````markdown
+    // Indented code block is not allowed
+    const message = "Hello, world!";
+
+```
+// No language specifier
+const message = "Hello, world!";
+```
+````
+
+---
+
+## ✨ Text Formatting
+
+- **Emphasis**: Use single asterisks for *italics* (`*italic*`) and double asterisks for **bold** (`**bold**`).
+- **Links**: Brackets for link text should not have leading or trailing spaces.
+
+**Good Example**:
+
+```markdown
+This is **important** and should be read *carefully*.
+
+[Google](https://www.google.com)
+```
+
+**Bad Example**:
+
+```markdown
+This is __important__ and should be read _carefully_.
+
+[ Google ](https://www.google.com)
+```
