@@ -587,17 +587,25 @@ const App = () => {
                         "TRUE": "true", "FALSE": "false"
                     };
                     let outStr = directConversionMap[tokenStr.toUpperCase()] || tokenStr;
-                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
-                        if (tokenStr.toUpperCase() === 'IF') return "";
+                    
+                    // Handle specific token types
+                    if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
+                        if (tokenStr.toUpperCase() === 'IF') {
+                            return { tokenString: "", useTemplate: true };
+                        }
+                        return { tokenString: outStr, useTemplate: true };
                     }
                     if (token.type === TOK_TYPE_ARGUMENT) {
-                        return ", ";
+                        return { tokenString: ", ", useTemplate: false };
                     }
-                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
-                         // This part is tricky. A simple IF(A,B,C) becomes A ? B : C
-                         // This simple converter won't handle that properly without more state.
-                         // We will ignore for this simplified version.
-                         return ")";
+                    if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
+                        return { tokenString: ")", useTemplate: false };
+                    }
+                    if (token.type === TOK_TYPE_OPERAND && token.subtype === TOK_SUBTYPE_TEXT) {
+                        return { tokenString: '"' + outStr + '"', useTemplate: false };
+                    }
+                    if (token.type === TOK_TYPE_OP_IN) {
+                        return { tokenString: " " + outStr + " ", useTemplate: false };
                     }
 
                     return { tokenString: outStr, useTemplate: true };
