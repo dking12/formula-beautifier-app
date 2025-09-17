@@ -9,7 +9,7 @@ const App = () => {
   const [isEu, setIsEu] = useState(false); // Flag for European-style separators (;)
   const [numberOfSpaces, setNumberOfSpaces] = useState(4); // Indentation spaces for beautify mode
   const [copySuccess, setCopySuccess] = useState(''); // Feedback message for copy action
-  const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "name": "A1", "let_name": "Status"}, {"field": "Amount", "name": "B1", "let_name": "Amount"}]'); // Location mappings for Smartsheet conversion
+  const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'); // Location mappings for Smartsheet conversion
 
   // --- Refs ---
   // A ref to hold the excelFormulaUtilities library logic.
@@ -695,7 +695,12 @@ const App = () => {
                 
                 // Create string of LET name and location references
                 const letNameString = Object.values(headerMappings).reduce((currStr, mappingObj) => { 
-                    return currStr + mappingObj.let_name; 
+                    // Use let_name if provided, otherwise calculate from name and location
+                    if (mappingObj.let_name) {
+                        return currStr + mappingObj.let_name;
+                    } else {
+                        return currStr + mappingObj.name + "," + mappingObj.location + ",";
+                    }
                 }, "");
                 
                 // Replace all unique @ row headers with LET name
@@ -882,15 +887,16 @@ const App = () => {
                                 value={locationMappings}
                                 onChange={(e) => setLocationMappings(e.target.value)}
                                 className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
-                                placeholder='[{"field": "Name", "name": "A1", "let_name": "Name"}, {"field": "Age", "name": "B1", "let_name": "Age"}]'
+                                placeholder='[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
                             />
                          </div>
                          <div className="text-sm text-gray-400">
                             <p>Enter location mappings as JSON array. Each mapping should have:</p>
                             <ul className="list-disc list-inside mt-1 space-y-1">
-                                <li><code>field</code>: The Smartsheet column name</li>
-                                <li><code>name</code>: The Google Sheets cell reference</li>
-                                <li><code>let_name</code>: The LET variable name</li>
+                                <li><code>field</code>: The Smartsheet column name. Example: Status</li>
+                                <li><code>location</code>: The Google Sheets cell reference. Example: A2</li>
+                                <li><code>name</code>: The LET variable name. Example: Status becomes status</li>
+                                <li><code>let_name</code>: The comma-separated LET variable name and location. End with a final comma. This field is optional and can be calculated using the location and name values. Example: status,A2,</li>
                             </ul>
                          </div>
                      </div>
