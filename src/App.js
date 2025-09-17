@@ -539,7 +539,6 @@ const App = () => {
                 options = root.core.extend({}, defaultOptions, options);
 
                 let indentCount = 0;
-                const indent_f = () => options.tmplIndentTab.repeat(indentCount);
 
                 const tokens = getTokens(formula);
                 if (!tokens) return "Error parsing formula";
@@ -549,7 +548,13 @@ const App = () => {
                 while (tokens.moveNext()) {
                     const token = tokens.current();
 
-                    const indent = isNewLine ? indent_f() : "";
+                    // For function stops, we need to use the current indent level before decrementing
+                    let currentIndentCount = indentCount;
+                    if (token.subtype === TOK_SUBTYPE_STOP) {
+                        currentIndentCount = Math.max(0, indentCount - 1);
+                    }
+
+                    const indent = isNewLine ? options.tmplIndentTab.repeat(currentIndentCount) : "";
                     const nextToken = tokens.next();
                     let lineBreak = "";
                     if (nextToken) {
