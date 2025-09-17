@@ -521,12 +521,12 @@ const App = () => {
                     tmplFunctionStop: '\n{{autoindent}})',
                     tmplOperandError: '{{token}}',
                     tmplOperandRange: '{{autoindent}}{{token}}',
-                    tmplLogical: '{{token}}{{autolinebreak}}',
+                    tmplLogical: '{{token}}',
                     tmplOperandLogical: '{{autoindent}}{{token}}',
                     tmplOperandNumber: '{{autoindent}}{{token}}',
                     tmplOperandText: '{{autoindent}}"{{token}}"',
                     tmplArgument: ',\n',
-                    tmplOperandOperatorInfix: ' {{token}}{{autolinebreak}} ',
+                    tmplOperandOperatorInfix: ' {{token}} ',
                     tmplSubexpressionStart: '{{autoindent}}(\n',
                     tmplSubexpressionStop: '\n{{autoindent}})',
                     tmplIndentTab: '    ',
@@ -557,8 +557,7 @@ const App = () => {
                     const nextToken = tokens.next();
                     let lineBreak = "";
                     if (nextToken) {
-                       if (nextToken.type === TOK_TYPE_ARGUMENT ||
-                           (nextToken.type === TOK_TYPE_FUNCTION && nextToken.subtype === TOK_SUBTYPE_STOP)) {
+                       if (nextToken.type === TOK_TYPE_ARGUMENT) {
                            lineBreak = options.newLine;
                        }
                     }
@@ -587,7 +586,7 @@ const App = () => {
                         "TRUE": "true", "FALSE": "false"
                     };
                     let outStr = directConversionMap[tokenStr.toUpperCase()] || tokenStr;
-                    
+
                     // Handle specific token types
                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
                         if (tokenStr.toUpperCase() === 'IF') {
