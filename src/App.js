@@ -9,7 +9,7 @@ const App = () => {
   const [isEu, setIsEu] = useState(false); // Flag for European-style separators (;)
   const [numberOfSpaces, setNumberOfSpaces] = useState(4); // Indentation spaces for beautify mode
   const [copySuccess, setCopySuccess] = useState(''); // Feedback message for copy action
-  const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'); // Location mappings for Smartsheet conversion
+  const [locationMappings, setLocationMappings] = useState('[{"field": "Status", "location": "A2"}, {"field": "Amount", "location": "B2"}, {"field": "123Field", "location": "C2"}, {"field": "Field#", "location": "D2"}]'); // Location mappings for Smartsheet conversion
   const [mappingFormat, setMappingFormat] = useState('json'); // Format for location mappings (json or csv)
   const [smartsheetFormat, setSmartsheetFormat] = useState('beautify'); // Format for Smartsheet conversion result (beautify, minify)
 
@@ -77,6 +77,16 @@ const App = () => {
           } else {
             // Parse location mappings from JSON string
             mappings = locationMappings ? JSON.parse(locationMappings) : [];
+            
+            // Generate name from field if not provided in JSON mappings
+            mappings.forEach(mapping => {
+              if (!mapping.name) {
+                mapping.name = excelFormulaUtilitiesRef.current.generateNameFromField(mapping.field);
+              }
+              if (!mapping.let_name) {
+                mapping.let_name = `${mapping.name},${mapping.location},`;
+              }
+            });
           }
           let convertedFormula = excelFormulaUtilitiesRef.current.convertSmartsheetFormula(formula, mappings);
 
@@ -692,6 +702,23 @@ const App = () => {
             root.getTokens = getTokens;
 
             /**
+             * Generates a name from a field using the specified transformation rules.
+             * @param {string} field The field name to transform.
+             * @returns {string} The generated name.
+             */
+            function generateNameFromField(field) {
+                return field
+                    .replace(/^(\d)/g, "c$1")           // Add 'c' prefix to fields starting with digit
+                    .replace(/#$/g, " num")              // Replace trailing # with " num"
+                    .replace(/[^a-zA-Z0-9 ]/g, "")       // Remove non-alphanumeric characters except spaces
+                    .replace(/ /g, "_")                  // Replace spaces with underscores
+                    .toLowerCase();                      // Convert to lowercase
+            }
+
+            // Expose the function on the root object
+            root.generateNameFromField = generateNameFromField;
+
+            /**
              * Convert CSV string to location mappings array
              * @param {string} csvString - CSV string with headers: field,location,name,let_name
              * @returns {Array} Array of mapping objects
@@ -742,7 +769,7 @@ const App = () => {
 
                 // Parse header row
                 const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
-                const requiredHeaders = ['field', 'location', 'name'];
+                const requiredHeaders = ['field', 'location'];
 
                 // Check for required headers
                 for (const required of requiredHeaders) {
@@ -768,6 +795,11 @@ const App = () => {
                         }
                         mapping[header] = value;
                     });
+
+                    // Generate name from field if not provided
+                    if (!mapping.name) {
+                        mapping.name = generateNameFromField(mapping.field);
+                    }
 
                     // Calculate let_name if not provided
                     if (!mapping.let_name) {
@@ -1079,8 +1111,8 @@ const App = () => {
                                 onChange={(e) => setLocationMappings(e.target.value)}
                                 className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono text-sm"
                                 placeholder={mappingFormat === 'json'
-                                    ? '[{"field": "Status", "location": "A2", "name": "status", "let_name": "status,A2,"}, {"field": "Amount", "location": "B2", "name": "amount", "let_name": "amount,B2,"}]'
-                                    : 'field,location,name,let_name\n"2025 Review Type","AL2","c2025_review_type","c2025_review_type,AL2,"\n"2nd Request Sent","BL2","c2nd_request_sent","c2nd_request_sent,BL2,"'
+                                    ? '[{"field": "Status", "location": "A2"}, {"field": "Amount", "location": "B2"}, {"field": "123Field", "location": "C2"}]'
+                                    : 'field,location\n"Status","A2"\n"Amount","B2"\n"123Field","C2"'
                                 }
                             />
                          </div>
@@ -1091,8 +1123,8 @@ const App = () => {
                                     <ul className="list-disc list-inside mt-1 space-y-1">
                                         <li><code>field</code>: The Smartsheet column name. Example: Status</li>
                                         <li><code>location</code>: The Google Sheets cell reference. Example: A2</li>
-                                        <li><code>name</code>: The LET variable name. Example: Status becomes status</li>
-                                        <li><code>let_name</code>: The comma-separated LET variable name and location. End with a final comma. This field is optional and can be calculated using the location and name values. Example: status,A2,</li>
+                                        <li><code>name</code>: (Optional) The LET variable name. If not provided, will be auto-generated from field using: field.replace(/^(\d)/g, "c$1").replace(/#$/g, " num").replace(/[^a-zA-Z0-9 ]/g, "").replace(/ /g, "_").toLowerCase()</li>
+                                        <li><code>let_name</code>: (Optional) The comma-separated LET variable name and location. If not provided, will be auto-generated from name and location. Example: status,A2,</li>
                                     </ul>
                                 </>
                             ) : (
@@ -1101,8 +1133,8 @@ const App = () => {
                                     <ul className="list-disc list-inside mt-1 space-y-1">
                                         <li><code>field</code>: The Smartsheet column name</li>
                                         <li><code>location</code>: The Google Sheets cell reference</li>
-                                        <li><code>name</code>: The LET variable name</li>
-                                        <li><code>let_name</code>: The comma-separated LET variable name and location (optional, will be calculated if not provided)</li>
+                                        <li><code>name</code>: (Optional) The LET variable name. If not provided, will be auto-generated from field</li>
+                                        <li><code>let_name</code>: (Optional) The comma-separated LET variable name and location. If not provided, will be auto-generated from name and location</li>
                                     </ul>
                                     <p className="mt-2 text-xs">Note: Values containing commas should be wrapped in double quotes. Use double quotes to escape quotes within values.</p>
                                 </>
