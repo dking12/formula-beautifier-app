@@ -549,10 +549,6 @@ const App = () => {
                 while (tokens.moveNext()) {
                     const token = tokens.current();
 
-                    if (token.subtype === TOK_SUBTYPE_STOP) {
-                        indentCount = Math.max(0, indentCount - 1);
-                    }
-
                     const indent = isNewLine ? indent_f() : "";
                     const nextToken = tokens.next();
                     let lineBreak = "";
@@ -564,8 +560,10 @@ const App = () => {
 
                     outputFormula += applyTokenTemplate(token, options, indent, lineBreak, options.customTokenRender, tokens.previous());
 
-                     if (token.subtype === TOK_SUBTYPE_START) {
+                    if (token.subtype === TOK_SUBTYPE_START) {
                         indentCount++;
+                    } else if (token.subtype === TOK_SUBTYPE_STOP) {
+                        indentCount = Math.max(0, indentCount - 1);
                     }
                     isNewLine = outputFormula.endsWith(options.newLine);
                 }
