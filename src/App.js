@@ -77,7 +77,7 @@ const App = () => {
           } else {
             // Parse location mappings from JSON string
             mappings = locationMappings ? JSON.parse(locationMappings) : [];
-            
+
             // Generate name from field if not provided in JSON mappings
             mappings.forEach(mapping => {
               if (!mapping.name) {
