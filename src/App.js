@@ -882,14 +882,14 @@ const App = () => {
              */
             root.convertSmartsheetFormat = function(text) {
                 if (!text) return "";
-                
+
                 // Replace {{ with <<[ and }} with ]>>
                 let convertedText = text.replace(/\{\{/g, "<<[").replace(/\}\}/g, "]>>");
-                
+
                 // Replace whole word mentions of "Smartsheet" with "AppSheet"
                 // Using word boundary regex to match whole words only
                 convertedText = convertedText.replace(/\bSmartsheet\b/g, "AppSheet");
-                
+
                 return convertedText;
             };
 
