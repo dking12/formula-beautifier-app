@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 // Main component for the Excel Formula Beautifier application
 const App = () => {
   // --- State Variables ---
-  const [formula, setFormula] = useState('=IF([Status]@row="Complete", [Amount]@row*1.1, [Amount]@row)'); // Input formula string
+  const [formula, setFormula] = useState('Hello {{name}}, welcome to Smartsheet! Your {{status}} is {{value}}.'); // Input formula string
   const [mode, setMode] = useState('beautify'); // Current operation mode (beautify, minify, etc.)
   const [output, setOutput] = useState(''); // Result of the formula processing
   const [isEu, setIsEu] = useState(false); // Flag for European-style separators (;)
@@ -53,6 +53,9 @@ const App = () => {
           newLine: '',
           prefix: '=',
         });
+        break;
+      case 'format-converter':
+        newOutput = excelFormulaUtilitiesRef.current.convertSmartsheetFormat(formula);
         break;
       case 'js':
         newOutput = excelFormulaUtilitiesRef.current.formula2JavaScript(formula);
@@ -873,6 +876,24 @@ const App = () => {
             };
 
             /**
+             * Converts Smartsheet placeholders and replaces "Smartsheet" with "AppSheet".
+             * @param {string} text The text to convert.
+             * @returns {string} The converted text.
+             */
+            root.convertSmartsheetFormat = function(text) {
+                if (!text) return "";
+                
+                // Replace {{ with <<[ and }} with ]>>
+                let convertedText = text.replace(/\{\{/g, "<<[").replace(/\}\}/g, "]>>");
+                
+                // Replace whole word mentions of "Smartsheet" with "AppSheet"
+                // Using word boundary regex to match whole words only
+                convertedText = convertedText.replace(/\bSmartsheet\b/g, "AppSheet");
+                
+                return convertedText;
+            };
+
+            /**
              * Formats a formula string with HTML tags for better display.
              * @param {string} formula The formula to format.
              * @param {object} options Formatting options.
@@ -981,14 +1002,14 @@ const App = () => {
             {/* Input Area */}
             <div className="bg-gray-800 rounded-lg p-4 shadow-md">
                 <label htmlFor="formula_input" className="block text-lg font-semibold mb-2 text-gray-300">
-                    Your Formula:
+                    Your Input:
                 </label>
                 <textarea
                     id="formula_input"
                     value={formula}
                     onChange={(e) => setFormula(e.target.value)}
                     className="w-full h-32 p-3 bg-gray-900 border border-gray-700 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500 transition duration-200 text-gray-200 font-mono"
-                    placeholder="e.g., =IF(A1>5, SUM(B1:B5), 0)"
+                    placeholder="Enter your text or formula here..."
                 />
             </div>
 
@@ -1010,6 +1031,7 @@ const App = () => {
                     <option value="csharp">To C#</option>
                     <option value="python">To Python</option>
                     <option value="smartsheet">Smartsheet to Google Sheets</option>
+                    <option value="format-converter">Smartsheet to AppSheet Format Converter</option>
                 </select>
             </div>
 
@@ -1039,6 +1061,21 @@ const App = () => {
                                 min="0"
                             />
                          </div>
+                     </div>
+                </div>
+             )}
+
+             {/* Format Converter Options (Conditional) */}
+             {mode === 'format-converter' && (
+                <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
+                     <h3 className="text-lg font-semibold mb-3 text-gray-300">Smartsheet to AppSheet Format Converter</h3>
+                     <div className="text-sm text-gray-400">
+                         <p className="mb-2">This tool converts Smartsheet placeholders and terminology:</p>
+                         <ul className="list-disc list-inside space-y-1">
+                             <li><code>{"{{placeholder}}"}</code> → <code>{"<<[placeholder]>>"}</code></li>
+                             <li><code>Smartsheet</code> → <code>AppSheet</code> (whole word matches only)</li>
+                         </ul>
+                         <p className="mt-2 text-xs">Perfect for converting Smartsheet templates to AppSheet format.</p>
                      </div>
                 </div>
              )}
