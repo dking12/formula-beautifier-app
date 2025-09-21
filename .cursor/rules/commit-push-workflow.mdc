@@ -1,6 +1,5 @@
 ---
-description: When a commit is requested
-globs: 
+description: Whenever the command git commit or git push is referenced
 alwaysApply: false
 ---
 # Commit and Push Workflow
@@ -10,13 +9,16 @@ alwaysApply: false
 When the user requests to commit changes, follow this exact workflow:
 
 ### 1. Check Status (Optional)
+
 ```bash
 git status
 ```
+
 - Verify all intended files are ready to be staged
 - Note the number of files that will be changed
 
 ### 2. Create One-Line Commit Message
+
 - Use conventional commit format: `type: brief description`
 - Keep it concise and descriptive
 - Focus on the main functionality added/changed
@@ -26,18 +28,21 @@ git status
   - `refactor: extract reusable component logic`
 
 ### 3. Add, Commit, and Push in One Command
+
 ```bash
 gacp "type: brief description"
 ```
 
 This single command will:
+
 - Stage all changes (`git add .`)
 - Commit with the provided message (`git commit -m`)
 - Push to remote (`git push`)
 
 ## Commit Message Guidelines
 
-### Types to Use:
+### Types to Use
+
 - `feat:` - New features or functionality
 - `fix:` - Bug fixes and error resolutions
 - `refactor:` - Code restructuring without changing functionality
@@ -46,7 +51,8 @@ This single command will:
 - `test:` - Adding or updating tests
 - `chore:` - Maintenance tasks, dependencies, etc.
 
-### Message Structure:
+### Message Structure
+
 - Start with type and colon
 - Use present tense ("add" not "added")
 - Be specific but concise
@@ -57,6 +63,14 @@ This single command will:
 **User Request:** "commit the recent changes"
 
 **Response:**
+
+1. Check status (optional): `git status`
+2. Add, commit, and push with one-liner: `gacp "feat: add dynamic short offer to link account page"`
+
+**User Request:** "push the code to github"
+
+**Response:**
+
 1. Check status (optional): `git status`
 2. Add, commit, and push with one-liner: `gacp "feat: add dynamic short offer to link account page"`
 
