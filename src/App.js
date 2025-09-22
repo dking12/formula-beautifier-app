@@ -57,20 +57,6 @@ const App = () => {
       case 'format-converter':
         newOutput = excelFormulaUtilitiesRef.current.convertSmartsheetFormat(formula);
         break;
-      case 'js':
-        newOutput = excelFormulaUtilitiesRef.current.formula2JavaScript(formula);
-        break;
-      case 'csharp':
-        newOutput = excelFormulaUtilitiesRef.current.formula2CSharp(formula);
-        break;
-      case 'python':
-        newOutput = excelFormulaUtilitiesRef.current.formula2Python(formula);
-        break;
-      case 'html':
-        newOutput = excelFormulaUtilitiesRef.current.formatFormulaHTML(formula, {
-          tmplIndentTab: ' '.repeat(numberOfSpaces),
-        });
-        break;
       case 'smartsheet':
         try {
           let mappings = [];
@@ -640,62 +626,6 @@ const App = () => {
                 return options.prefix + trim(outputFormula) + options.postfix;
             };
 
-            /**
-             * Converts a formula to its JavaScript equivalent.
-             * @param {string} formula The formula to convert.
-             * @returns {string} The JavaScript code.
-             */
-            root.formula2JavaScript = function(formula) {
-                 const tokRender = (tokenStr, token) => {
-                    const directConversionMap = {
-                        "=": "===", "<>": "!==",
-                        "&": "+", "AND": "&&", "OR": "||",
-                        "TRUE": "true", "FALSE": "false"
-                    };
-                    let outStr = directConversionMap[tokenStr.toUpperCase()] || tokenStr;
-
-                    // Handle specific token types
-                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_START) {
-                        if (tokenStr.toUpperCase() === 'IF') {
-                            return { tokenString: "", useTemplate: true };
-                        }
-                        return { tokenString: outStr, useTemplate: true };
-                    }
-                    if (token.type === TOK_TYPE_ARGUMENT) {
-                        return { tokenString: ", ", useTemplate: false };
-                    }
-                     if (token.type === TOK_TYPE_FUNCTION && token.subtype === TOK_SUBTYPE_STOP) {
-                        return { tokenString: ")", useTemplate: false };
-                    }
-                    if (token.type === TOK_TYPE_OPERAND && token.subtype === TOK_SUBTYPE_TEXT) {
-                        return { tokenString: '"' + outStr + '"', useTemplate: false };
-                    }
-                    if (token.type === TOK_TYPE_OP_IN) {
-                        return { tokenString: " " + outStr + " ", useTemplate: false };
-                    }
-
-                    return { tokenString: outStr, useTemplate: true };
-                };
-                const options = {
-                    // Simplified options for JS conversion
-                     tmplFunctionStart: '{{token}}(',
-                     tmplFunctionStop: ')',
-                     tmplOperandText: '"{{token}}"',
-                     tmplArgument: ', ',
-                     tmplOperandOperatorInfix: ' {{token}} ',
-                     tmplSubexpressionStart: '(',
-                     tmplSubexpressionStop: ')',
-                     // Disable beautifying features
-                     tmplIndentTab: '',
-                     newLine: '',
-                     prefix: '',
-                     customTokenRender: tokRender
-                };
-                 return root.formatFormula(formula, options);
-            };
-
-            root.formula2CSharp = root.formula2JavaScript; // Alias for simplicity
-            root.formula2Python = root.formula2JavaScript; // Alias for simplicity
 
             /**
              * Exposes the getTokens function for external use.
@@ -893,36 +823,6 @@ const App = () => {
                 return convertedText;
             };
 
-            /**
-             * Formats a formula string with HTML tags for better display.
-             * @param {string} formula The formula to format.
-             * @param {object} options Formatting options.
-             * @returns {string} The formatted formula with HTML tags.
-             */
-            root.formatFormulaHTML = function (formula, options) {
-                const defaultOptions = {
-                    tmplFunctionStart: '<span class="function">{{autoindent}}<span class="function-name">{{token}}</span>(\n',
-                    tmplFunctionStop: '\n{{autoindent}})</span>',
-                    tmplOperandError: '<span class="error">{{token}}</span>',
-                    tmplOperandRange: '{{autoindent}}<span class="range">{{token}}</span>',
-                    tmplLogical: '<span class="logical">{{token}}</span>{{autolinebreak}}',
-                    tmplOperandLogical: '{{autoindent}}<span class="logical">{{token}}</span>',
-                    tmplOperandNumber: '{{autoindent}}<span class="number">{{token}}</span>',
-                    tmplOperandText: '{{autoindent}}<span class="text">"{{token}}"</span>',
-                    tmplArgument: ',\n',
-                    tmplOperandOperatorInfix: ' <span class="operator">{{token}}</span>{{autolinebreak}} ',
-                    tmplSubexpressionStart: '{{autoindent}}<span class="subexpression">(\n',
-                    tmplSubexpressionStop: '\n{{autoindent}})</span>',
-                    tmplIndentTab: '    ',
-                    tmplIndentSpace: ' ',
-                    newLine: '\n',
-                    customTokenRender: null,
-                    prefix: '<span class="equals">=</span>',
-                    postfix: ""
-                };
-                options = root.core.extend({}, defaultOptions, options);
-                return root.formatFormula(formula, options);
-            };
 
 
             // Store the fully constructed library in the ref
@@ -1026,17 +926,13 @@ const App = () => {
                 >
                     <option value="beautify">Beautify</option>
                     <option value="minify">Minify</option>
-                    <option value="html">To HTML</option>
-                    <option value="js">To JavaScript</option>
-                    <option value="csharp">To C#</option>
-                    <option value="python">To Python</option>
                     <option value="smartsheet">Smartsheet to Google Sheets</option>
                     <option value="format-converter">Smartsheet to AppSheet Format Converter</option>
                 </select>
             </div>
 
              {/* Formatting Options (Conditional) */}
-             {(mode === 'beautify' || mode === 'html' || (mode === 'smartsheet' && smartsheetFormat === 'beautify')) && (
+             {(mode === 'beautify' || (mode === 'smartsheet' && smartsheetFormat === 'beautify')) && (
                 <div className="bg-gray-800 rounded-lg p-4 shadow-md transition-all duration-300">
                      <h3 className="text-lg font-semibold mb-3 text-gray-300">Formatting Options</h3>
                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
